@@ -1,1 +1,4 @@
-# metrics-exporter-playground
+- DataSource
+  - http://prometheus:9090
+- メトリクス確認
+  - http://localhost:9090/metrics
