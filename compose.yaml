@@ -3,8 +3,8 @@ name: metrics-exporter-playground
 services:
   app:
     build:
-      context: ./.docker/app
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./.docker/app/Dockerfile
     container_name: app
     ports:
       - mode: ingress

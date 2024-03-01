@@ -4,6 +4,8 @@
   - http://prometheus:9090
 - メトリクス確認
   - http://localhost:9090/metrics
+- Grafana ダッシュボード
+  - http://localhost:3000
 
 ## Finalizer
 
