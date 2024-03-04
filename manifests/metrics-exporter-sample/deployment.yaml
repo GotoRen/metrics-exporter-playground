@@ -8,12 +8,12 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: metrics-exporter-sample-pod
+      app: metrics-exporter-sample-app
   replicas: 3
   template:
     metadata:
       labels:
-        app: metrics-exporter-sample-pod
+        app: metrics-exporter-sample-app
     spec:
       containers:
         - name: metrics-exporter-sample
