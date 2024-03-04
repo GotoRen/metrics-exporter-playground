@@ -227,3 +227,10 @@ $ kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl d
 
 - `spec.serviceMonitorSelector.matchLabels`
   - ServiceMonitor として登録する際に使用する Key-Value を定義
+
+## ダッシュボード
+<img width="1728" alt="スクリーンショット 2024-03-04 午後1 28 48" src="https://github.com/GotoRen/metrics-exporter-playground/assets/63791288/038d004a-1fe7-4091-86df-b20dcdb273f4">
+
+<img width="1728" alt="スクリーンショット 2024-03-04 午後1 29 08" src="https://github.com/GotoRen/metrics-exporter-playground/assets/63791288/64e32ea6-5b43-4497-a279-07d52ddbb59d">
+
+<img width="1728" alt="スクリーンショット 2024-03-04 午後1 46 37" src="https://github.com/GotoRen/metrics-exporter-playground/assets/63791288/241e1884-9870-4045-b3e4-d0edc12bd757">
