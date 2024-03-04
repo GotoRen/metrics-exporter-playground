@@ -2,12 +2,13 @@
 
 ## アクセスリンク
 
-- DataSource
-  - http://prometheus:9090
-- メトリクス確認
-  - http://localhost:9090/metrics
-- Grafana ダッシュボード
-  - http://localhost:3000
+- DockerCompose
+  - DataSource：http://prometheus:9090
+- アクセス
+  - ServiceMonitor 確認
+    - http://localhost:9090/targets?search=
+  - Grafana ダッシュボード
+    - http://localhost:3000
 
 ## 実行
 
