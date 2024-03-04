@@ -175,18 +175,19 @@ kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.107.47.153   <no
 prometheus-operated                              ClusterIP   None            <none>        9090/TCP                     85s
 
 ### ポートフォワード
-kubectl port-forward service/kube-prometheus-stack-prometheus 9090:9090
-kubectl port-forward service/kube-prometheus-stack-grafana 3000:80
+$ kubectl port-forward -n monitoring service/kube-prometheus-stack-prometheus 9090:9090
+$ kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3000:80
+$ kubectl port-forward -n sample service/metrics-exporter-sample 8080:8080
 ```
 
 ```shell
 ### 削除
-kustomize build ./ --enable-helm | k delete -f -
-kubectl delete namespace monitoring
+$ kustomize build ./ --enable-helm | k delete -f -
+$ kubectl delete namespace monitoring
 ```
 
 ```shell
 ### トラブルシューティング
-kubectl get namespace monitoring -o json | jq '.spec.finalizers = []' | kubectl replace --raw /api/v1/namespaces/monitoring/finalize -f -
-kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl delete namespace
+$ kubectl get namespace monitoring -o json | jq '.spec.finalizers = []' | kubectl replace --raw /api/v1/namespaces/monitoring/finalize -f -
+$ kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl delete namespace
 ```

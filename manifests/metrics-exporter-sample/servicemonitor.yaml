@@ -8,7 +8,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: metrics-exporter-sample
+      app: metrics-exporter-sample-svc
   endpoints:
     - port: http
       interval: 30s
