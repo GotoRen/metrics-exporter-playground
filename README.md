@@ -212,6 +212,10 @@ $ kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl d
 
 - `spec.selectro.app`
   - Service リソースとして公開する ReplicaSet ラベル（Pod ラベル）を指定
+  - 例として、Deployment リソースが親となる Pod を定義する場合、Deployment に定義される次の 3 つのラベルは何も同じ値となる
+    - `metadata.labels.app`
+    - `spec.selector.matchLabels.app`
+    - `spec.template.metadata.labels.app`
 - `metadata.labels.app`
   - Service として公開するリソースに付与するラベルを設定
 
@@ -229,6 +233,7 @@ $ kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl d
   - ServiceMonitor として登録する際に使用する Key-Value を定義
 
 ## ダッシュボード
+
 <img width="1728" alt="スクリーンショット 2024-03-04 午後1 28 48" src="https://github.com/GotoRen/metrics-exporter-playground/assets/63791288/038d004a-1fe7-4091-86df-b20dcdb273f4">
 
 <img width="1728" alt="スクリーンショット 2024-03-04 午後1 29 08" src="https://github.com/GotoRen/metrics-exporter-playground/assets/63791288/64e32ea6-5b43-4497-a279-07d52ddbb59d">
