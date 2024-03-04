@@ -1,5 +1,7 @@
 # metrics-exporter-playground
 
+## アクセスリンク
+
 - DataSource
   - http://prometheus:9090
 - メトリクス確認
@@ -7,7 +9,7 @@
 - Grafana ダッシュボード
   - http://localhost:3000
 
-## Finalizer
+## 実行
 
 ```shell
 ### 初回時にデプロイする場合
@@ -191,3 +193,37 @@ $ kubectl delete namespace monitoring
 $ kubectl get namespace monitoring -o json | jq '.spec.finalizers = []' | kubectl replace --raw /api/v1/namespaces/monitoring/finalize -f -
 $ kubectl get namespaces | grep Terminating | awk '{print $1}' | xargs kubectl delete namespace
 ```
+
+## リソースラベルについて
+
+### Deployment リソース
+
+- `spec.selector.matchLabels.app`
+  - ReplicaSet として定義する Pod ラベルを指定
+  - 一般に、`spec.template.metadata.labels.ap`と同じに設定されることが多い
+- `spec.template.metadata.labels.app`
+  - Pod として定義するテンプレートラベルを指定
+  - Deployment が作成する全ての Pod に適用される
+  - 一般に、`spec.selector.matchLabels.app`と同じに設定されることが多い
+- `metadata.labels.app`
+  - Deployment として公開するリソースに付与するラベルを設定
+
+### Service リソース
+
+- `spec.selectro.app`
+  - Service リソースとして公開する ReplicaSet ラベル（Pod ラベル）を指定
+- `metadata.labels.app`
+  - Service として公開するリソースに付与するラベルを設定
+
+### ServiceMonitor リソース
+
+- `spec.selector.matchLabels.app`
+  - メトリクスの scrape 先となる Service リソースに設定される `metadata.labels.app` を参照
+- `metadata.labels.app`
+  - ServiceMonitor として公開するリソースに付与するラベルを設定
+  - ServiceMonitor として登録し、Prometheus カスタムリソースにメトリクスを scrape してもらう場合、Prometheus カスタムリソースの `spec.serviceMonitorSelector.matchLabels` に指定された Key-Value を指定
+
+### Prometheus カスタムリソース
+
+- `spec.serviceMonitorSelector.matchLabels`
+  - ServiceMonitor として登録する際に使用する Key-Value を定義
