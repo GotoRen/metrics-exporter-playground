@@ -44,6 +44,22 @@ services:
         bind:
           create_host_path: true
 
+  pushgateway:
+    build:
+      context: ./.docker/pushgateway
+      dockerfile: ./Dockerfile
+    container_name: pushgateway
+    environment:
+      TZ: Asia/Tokyo
+    ports:
+      - mode: ingress
+        target: 9091
+        published: 9091
+        protocol: tcp
+    privileged: true
+    restart: always
+    tty: true
+
   grafana:
     build:
       context: ./.docker/grafana

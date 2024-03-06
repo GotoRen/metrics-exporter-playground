@@ -10,6 +10,16 @@
   - Grafana ダッシュボード
     - http://localhost:3000
 
+## Components
+
+| kube-prometheus-stack |
+| :-------------------- |
+| Grafana               |
+| PushGateway           |
+| ServiceMonitor        |
+| Prometheus            |
+| NodeExporter          |
+
 ## 実行
 
 ```shell
