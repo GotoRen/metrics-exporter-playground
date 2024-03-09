@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/GotoRen/metrics-exporter-playground/app/config"
 	"github.com/GotoRen/metrics-exporter-playground/app/internal"
 	"github.com/GotoRen/metrics-exporter-playground/app/model"
 	"github.com/labstack/echo/v4"
@@ -12,9 +13,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 )
 
-const pushGatewayEndPoint = "http://pushgateway:9091"
-
 func main() {
+	cfg, err := config.Get()
+	if err != nil {
+		log.Println(err)
+	}
+
 	e := echo.New()
 
 	internal.Register(prometheus.DefaultRegisterer)
@@ -39,7 +43,7 @@ func main() {
 	e.GET("/push", func(c echo.Context) error {
 		internal.MetricsCounter().Inc()
 
-		if err := push.New(pushGatewayEndPoint, "eyes_metrics_counter_job").
+		if err := push.New(cfg.PushGatewayEndPoint, "eyes_metrics_counter_job").
 			Collector(internal.MetricsCounter()).Push(); err != nil {
 
 			errMsg := "Could not push to Pushgateway"
