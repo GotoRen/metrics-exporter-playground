@@ -26,10 +26,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// カスタムクライアントを使用する場合
-	// client := NewCustomClient()
-	// config.
 	config := pushmetric.ExportConfig(jobName, applicationName, pushInterval)
+
+	// // カスタムクライアントを使用する場合
+	// client := NewCustomClient()
 	// config := pushmetric.ExportConfig(jobName, applicationName, pushInterval).WithClient(client)
 
 	go config.RuntineSequentialExporter(ctx)
@@ -39,9 +39,9 @@ func main() {
 	log.Println("CronJob completed")
 }
 
-// カスタムクライアントを使用する場合
+// カスタムクライアントを定義
 func NewCustomClient() *http.Client {
-	requestTimeoutLimit := 1 * time.Millisecond // 5 秒間 レスポンスがない場合にタイムアウトエラー
+	requestTimeoutLimit := 5 * time.Second // 5 秒間 レスポンスがない場合にタイムアウトエラー
 
 	return &http.Client{
 		Timeout:   requestTimeoutLimit,

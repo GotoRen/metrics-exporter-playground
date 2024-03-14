@@ -76,13 +76,3 @@ func pushMetrics(ctx context.Context, endpoint string, jobName string, client *h
 
 	return pusher.PushContext(ctx)
 }
-
-func pushMetricsWithCustomClient(ctx context.Context, endpoint string, jobName string, collectors ...prometheus.Collector) error {
-	pusher := push.New(endpoint, jobName)
-
-	for _, collector := range collectors {
-		pusher = pusher.Collector(collector)
-	}
-
-	return pusher.PushContext(ctx)
-}
