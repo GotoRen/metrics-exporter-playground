@@ -39,9 +39,9 @@ func main() {
 	log.Println("CronJob completed")
 }
 
-// カスタムクライアントを定義
+// 任意: カスタムクライアントを定義
 func NewCustomClient() *http.Client {
-	requestTimeoutLimit := 1 * time.Microsecond // 5 秒間 レスポンスがない場合にタイムアウトエラー
+	requestTimeoutLimit := 5 * time.Second // 5 秒間 レスポンスがない場合にタイムアウトエラー
 
 	return &http.Client{
 		Timeout:   requestTimeoutLimit,

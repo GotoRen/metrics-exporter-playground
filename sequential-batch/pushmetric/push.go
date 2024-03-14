@@ -28,6 +28,7 @@ func New(jobName, applicationName string, interval time.Duration) *Exporter {
 	}
 }
 
+/* optional method */
 // WithClient sets the HTTP client for the Exporter and returns the modified Exporter instance.
 func (e *Exporter) WithClient(client *http.Client) *Exporter {
 	e.client = client
