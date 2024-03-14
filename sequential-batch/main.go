@@ -15,8 +15,9 @@ const (
 )
 
 const (
-	pushInterval = 3 * time.Second // 3 秒毎に PushGateway に送信
-	lifeTime     = 1 * time.Minute // 1 分後にJobを終了
+	requestTimeoutLimit = time.Second * 5 // 5 秒間 レスポンスがない場合にタイムアウトエラー
+	pushInterval        = 3 * time.Second // 3 秒毎に PushGateway に送信
+	lifeTime            = 1 * time.Minute // 1 分後にJobを終了
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	defer cancel()
 
 	client := &http.Client{
-		Timeout:   time.Second * 1,
+		Timeout:   requestTimeoutLimit,
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 	}
 
