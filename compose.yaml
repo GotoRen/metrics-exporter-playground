@@ -4,8 +4,11 @@ services:
   app:
     build:
       context: .
-      dockerfile: ./.docker/app/Dockerfile
+      dockerfile: ./.docker/app/Dockerfile.production
     container_name: app
+    environment:
+      TZ: "Asia/Tokyo"
+      PUSHGATEWAY_ENDPOINT: "http://pushgateway:9091"
     ports:
       - mode: ingress
         published: 8080
@@ -14,13 +17,13 @@ services:
     privileged: true
     restart: always
     tty: true
-    volumes:
-      - type: bind
-        source: ./app
-        target: /app
-        bind:
-          create_host_path: true
-    working_dir: /app
+    # volumes:
+    #   - type: bind
+    #     source: ./app
+    #     target: /app
+    #     bind:
+    #       create_host_path: true
+    # working_dir: /app
 
   prometheus:
     build:
@@ -28,7 +31,7 @@ services:
       dockerfile: ./Dockerfile
     container_name: prometheus
     environment:
-      TZ: Asia/Tokyo
+      TZ: "Asia/Tokyo"
     ports:
       - mode: ingress
         target: 9090
@@ -44,13 +47,29 @@ services:
         bind:
           create_host_path: true
 
+  pushgateway:
+    build:
+      context: ./.docker/pushgateway
+      dockerfile: ./Dockerfile
+    container_name: pushgateway
+    environment:
+      TZ: "Asia/Tokyo"
+    ports:
+      - mode: ingress
+        target: 9091
+        published: 9091
+        protocol: tcp
+    privileged: true
+    restart: always
+    tty: true
+
   grafana:
     build:
       context: ./.docker/grafana
       dockerfile: ./Dockerfile
     container_name: grafana
     environment:
-      TZ: Asia/Tokyo
+      TZ: "Asia/Tokyo"
       GF_SECURITY_ADMIN_PASSWORD: password
       GF_SECURITY_ADMIN_USER: admin
       GF_SERVER_DOMAIN: localhost

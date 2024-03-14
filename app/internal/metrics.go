@@ -19,12 +19,24 @@ var (
 		},
 		[]string{applicationNameKey, dashboardUidKey},
 	)
+
+	eyesCustomMetricCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "eyes_custom_metric_push",
+			Help: "Application metrics managed by eyes",
+		},
+	)
 )
 
 func Register(r prometheus.Registerer) {
 	r.MustRegister(
 		eyesCustomMetric,
+		eyesCustomMetricCounter,
 	)
+}
+
+func MetricsCounter() prometheus.Counter {
+	return eyesCustomMetricCounter
 }
 
 func UpdateEyesCustomMetric(h *model.HandleApplication) {

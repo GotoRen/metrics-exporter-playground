@@ -28,3 +28,6 @@ spec:
               cpu: "0.2"
           ports:
             - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: metrics-exporter-sample

@@ -10,6 +10,16 @@
   - Grafana ダッシュボード
     - http://localhost:3000
 
+## Components
+
+| kube-prometheus-stack |
+| :-------------------- |
+| Grafana               |
+| PushGateway           |
+| ServiceMonitor        |
+| Prometheus            |
+| NodeExporter          |
+
 ## 実行
 
 ```shell
@@ -17,7 +27,7 @@
 $ kubectl create namespace monitoring
 namespace/monitoring created
 
-$ kustomize build ./ --enable-helm | k create -f -
+$ kustomize build ./ --enable-helm | kubectl create -f -
 customresourcedefinition.apiextensions.k8s.io/alertmanagerconfigs.monitoring.coreos.com created
 customresourcedefinition.apiextensions.k8s.io/alertmanagers.monitoring.coreos.com created
 customresourcedefinition.apiextensions.k8s.io/podmonitors.monitoring.coreos.com created
@@ -151,41 +161,49 @@ servicemonitor.monitoring.coreos.com/kube-prometheus-stack-prometheus created
 servicemonitor.monitoring.coreos.com/kube-prometheus-stack-prometheus-node-exporter created
 mutatingwebhookconfiguration.admissionregistration.k8s.io/kube-prometheus-stack-admission created
 validatingwebhookconfiguration.admissionregistration.k8s.io/kube-prometheus-stack-admission created
+
+$ kustomize build ./ --enable-helm | kubectl create -f -
+serviceaccount/prometheus-pushgateway created
+service/prometheus-pushgateway created
+deployment.apps/prometheus-pushgateway created
 ```
 
 ```shell
 ### 確認
-$ kubectl get pod
+$ kubectl get pod -n monitoring
 NAME                                                        READY   STATUS      RESTARTS   AGE
-alertmanager-kube-prometheus-stack-alertmanager-0           2/2     Running     0          70s
-kube-prometheus-stack-admission-create-t5w8k                0/1     Completed   0          71s
-kube-prometheus-stack-admission-patch-lgj64                 0/1     Completed   2          71s
-kube-prometheus-stack-grafana-6f75fcb78f-rnw45              3/3     Running     0          71s
-kube-prometheus-stack-kube-state-metrics-84cfc95b44-gd6kl   1/1     Running     0          71s
-kube-prometheus-stack-operator-6885c565cb-nkj6f             1/1     Running     0          71s
-kube-prometheus-stack-prometheus-node-exporter-gsf27        1/1     Running     0          71s
-prometheus-kube-prometheus-stack-prometheus-0               2/2     Running     0          69s
+alertmanager-kube-prometheus-stack-alertmanager-0           2/2     Running     0          21m
+kube-prometheus-stack-admission-create-l49gc                0/1     Completed   0          21m
+kube-prometheus-stack-admission-patch-7qb9l                 0/1     Completed   0          21m
+kube-prometheus-stack-grafana-6f75fcb78f-ck7qb              3/3     Running     0          21m
+kube-prometheus-stack-kube-state-metrics-84cfc95b44-62nwn   1/1     Running     0          21m
+kube-prometheus-stack-operator-6885c565cb-z7zh4             1/1     Running     0          21m
+kube-prometheus-stack-prometheus-node-exporter-xrbmx        1/1     Running     0          21m
+prometheus-kube-prometheus-stack-prometheus-0               2/2     Running     0          21m
+prometheus-pushgateway-6f9d9b9bf7-92xt4                     1/1     Running     0          25s
 
-$ kubectl get svc
-NAME                                             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
-alertmanager-operated                            ClusterIP   None            <none>        9093/TCP,9094/TCP,9094/UDP   86s
-kube-prometheus-stack-alertmanager               ClusterIP   10.98.184.99    <none>        9093/TCP,8080/TCP            87s
-kube-prometheus-stack-grafana                    ClusterIP   10.96.150.251   <none>        80/TCP                       87s
-kube-prometheus-stack-kube-state-metrics         ClusterIP   10.100.15.137   <none>        8080/TCP                     87s
-kube-prometheus-stack-operator                   ClusterIP   10.110.71.65    <none>        443/TCP                      87s
-kube-prometheus-stack-prometheus                 ClusterIP   10.107.15.20    <none>        9090/TCP,8080/TCP            87s
-kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.107.47.153   <none>        9100/TCP                     87s
-prometheus-operated                              ClusterIP   None            <none>        9090/TCP                     85s
+$ kubectl get svc -n monitoring
+NAME                                             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+alertmanager-operated                            ClusterIP   None             <none>        9093/TCP,9094/TCP,9094/UDP   21m
+kube-prometheus-stack-alertmanager               ClusterIP   10.105.139.95    <none>        9093/TCP,8080/TCP            22m
+kube-prometheus-stack-grafana                    ClusterIP   10.96.79.14      <none>        80/TCP                       22m
+kube-prometheus-stack-kube-state-metrics         ClusterIP   10.105.59.65     <none>        8080/TCP                     22m
+kube-prometheus-stack-operator                   ClusterIP   10.96.31.197     <none>        443/TCP                      22m
+kube-prometheus-stack-prometheus                 ClusterIP   10.107.132.79    <none>        9090/TCP,8080/TCP            22m
+kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.109.202.95    <none>        9100/TCP                     22m
+prometheus-operated                              ClusterIP   None             <none>        9090/TCP                     21m
+prometheus-pushgateway                           ClusterIP   10.104.146.173   <none>        9091/TCP                     38s
 
 ### ポートフォワード
 $ kubectl port-forward -n monitoring service/kube-prometheus-stack-prometheus 9090:9090
 $ kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3000:80
 $ kubectl port-forward -n sample service/metrics-exporter-sample 8080:8080
+$ kubectl port-forward -n monitoring service/prometheus-pushgateway 9091:9091
 ```
 
 ```shell
 ### 削除
-$ kustomize build ./ --enable-helm | k delete -f -
+$ kustomize build ./ --enable-helm | kubectl delete -f -
 $ kubectl delete namespace monitoring
 ```
 
