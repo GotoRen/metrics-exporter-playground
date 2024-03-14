@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/GotoRen/metrics-exporter-playground/sequential-batch/pushmetric"
@@ -19,6 +21,14 @@ const (
 
 func main() {
 	log.Println("CronJob starting...")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := &http.Client{
+		Timeout:   time.Second * 1,
+		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+	}
 
 	go func() {
 		ticker := time.NewTicker(pushInterval)
@@ -38,7 +48,7 @@ func main() {
 				pushmetric.UpdateGaugeMetric(labels, cpuUsage, memoryUsage)
 				pushmetric.IncrementCounterMetric(labels)
 
-				pushmetric.Export(jobName)
+				pushmetric.Export(ctx, client, jobName)
 			}
 		}
 	}()

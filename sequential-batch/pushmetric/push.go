@@ -1,7 +1,9 @@
 package pushmetric
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,8 +13,8 @@ import (
 const pushGatewayEndPoint = "http://localhost:9091"
 
 // Export pushes metrics to Prometheus Pushgateway with the given job name.
-func Export(jobName string) {
-	if err := pushMetrics(pushGatewayEndPoint, jobName, RegisterMetrics()...); err != nil {
+func Export(ctx context.Context, client *http.Client, jobName string) {
+	if err := pushMetrics(ctx, pushGatewayEndPoint, jobName, client, RegisterMetrics()...); err != nil {
 		log.Println("Failed to push metrics:", err)
 	} else {
 		log.Println("Metrics pushed successfully")
@@ -20,14 +22,14 @@ func Export(jobName string) {
 }
 
 // pushMetrics pushes the provided collectors to the specified endpoint with the given job name.
-func pushMetrics(endpoint string, jobName string, collectors ...prometheus.Collector) error {
-	pusher := push.New(endpoint, jobName)
+func pushMetrics(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors ...prometheus.Collector) error {
+	pusher := push.New(endpoint, jobName).Client(client)
 
 	for _, collector := range collectors {
 		pusher = pusher.Collector(collector)
 	}
 
-	return pusher.Push()
+	return pusher.PushContext(ctx)
 }
 
 // GetInstanceName returns the hostname of the current instance.
