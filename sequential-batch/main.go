@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	requestTimeoutLimit = time.Second * 5 // 5 秒間 レスポンスがない場合にタイムアウトエラー
+	requestTimeoutLimit = 5 * time.Second // 5 秒間 レスポンスがない場合にタイムアウトエラー
 	pushInterval        = 3 * time.Second // 3 秒毎に PushGateway に送信
 	lifeTime            = 1 * time.Minute // 1 分後にJobを終了
 )
@@ -23,39 +23,21 @@ const (
 func main() {
 	log.Println("CronJob starting...")
 
+	// create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// create custom http client
 	client := &http.Client{
 		Timeout:   requestTimeoutLimit,
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 	}
 
-	go func() {
-		ticker := time.NewTicker(pushInterval)
-		defer ticker.Stop()
+	// export metrics
+	// TODO: Http client を実装する場合とそうでない場合を分離する
+	go pushmetric.RoutineSequentialExport(ctx, client, jobName, applicationName, pushInterval)
 
-		for {
-			select {
-			case <-ticker.C:
-				labels := &pushmetric.CustomLabels{
-					ApplicationName: applicationName,
-					InstanceName:    pushmetric.GetInstanceName(),
-				}
-
-				cpuUsage := 0.85
-				memoryUsage := 512
-
-				pushmetric.UpdateGaugeMetric(labels, cpuUsage, memoryUsage)
-				pushmetric.IncrementCounterMetric(labels)
-
-				pushmetric.Export(ctx, client, jobName)
-			}
-		}
-	}()
-
-	exitTimer := time.NewTimer(lifeTime)
-	<-exitTimer.C
-
+	// wait main routine
+	time.Sleep(lifeTime)
 	log.Println("CronJob completed")
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -12,8 +12,29 @@ import (
 
 const pushGatewayEndPoint = "http://localhost:9091"
 
-// Export pushes metrics to Prometheus Pushgateway with the given job name.
-func Export(ctx context.Context, client *http.Client, jobName string) {
+func RoutineSequentialExport(ctx context.Context, client *http.Client, jobName, applicationName string, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			labels := &CustomLabels{
+				ApplicationName: applicationName,
+				InstanceName:    getInstanceName(),
+			}
+
+			m := getMetrics() // getMetrics
+
+			UpdateGaugeMetric(labels, m.CpuUsage, m.MemoryUsage)
+			IncrementCounterMetric(labels)
+
+			export(ctx, client, jobName)
+		}
+	}
+}
+
+func export(ctx context.Context, client *http.Client, jobName string) {
 	if err := pushMetrics(ctx, pushGatewayEndPoint, jobName, client, RegisterMetrics()...); err != nil {
 		log.Println("Failed to push metrics:", err)
 	} else {
@@ -30,14 +51,4 @@ func pushMetrics(ctx context.Context, endpoint string, jobName string, client *h
 	}
 
 	return pusher.PushContext(ctx)
-}
-
-// GetInstanceName returns the hostname of the current instance.
-func GetInstanceName() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatal("Failed to get hostname:", err)
-	}
-
-	return hostname
 }
