@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,6 +12,7 @@ import (
 
 type HandleApplication struct {
 	ApplicationName string
+	InstanceName    string
 }
 
 // CustomCollector implements the prometheus.Collector interface
@@ -52,7 +54,7 @@ var (
 			Name: "cpu_usage",
 			Help: "CPU usage of the application",
 		},
-		[]string{"application_name"},
+		[]string{"application_name", "instance"},
 	)
 
 	memoryUsageMetric = prometheus.NewGaugeVec(
@@ -60,7 +62,7 @@ var (
 			Name: "memory_usage",
 			Help: "Memory usage of the application",
 		},
-		[]string{"application_name"},
+		[]string{"application_name", "instance"},
 	)
 )
 
@@ -72,14 +74,14 @@ func Register(r prometheus.Registerer) {
 }
 
 // UpdateMetrics 関数から jobName を削除し、main 関数でジョブ名を指定する
+// UpdateMetrics 関数から jobName を削除し、main 関数でジョブ名を指定する
 func UpdateMetrics(h *HandleApplication) {
-	// Simulated CPU and memory usage
-	cpuUsage := 0.75   // 75% CPU usage
-	memoryUsage := 512 // 512 MB memory usage
+	cpuUsage := 0.75
+	memoryUsage := 512
 
 	// Update additional metrics
-	cpuUsageMetric.WithLabelValues(h.ApplicationName).Set(cpuUsage)
-	memoryUsageMetric.WithLabelValues(h.ApplicationName).Set(float64(memoryUsage))
+	cpuUsageMetric.WithLabelValues(h.ApplicationName, h.InstanceName).Set(cpuUsage)
+	memoryUsageMetric.WithLabelValues(h.ApplicationName, h.InstanceName).Set(float64(memoryUsage))
 }
 
 func main() {
@@ -88,6 +90,11 @@ func main() {
 
 	applicationName := "hogehoge"
 	jobName := "hoge"
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatal("Failed to get hostname:", err)
+	}
 
 	// Start routine to update metrics and push to Pushgateway every 5 seconds
 	go func() {
@@ -100,6 +107,7 @@ func main() {
 				// Simulate data to update metrics
 				handleApp := &HandleApplication{
 					ApplicationName: applicationName,
+					InstanceName:    hostname,
 				}
 				UpdateMetrics(handleApp)
 
