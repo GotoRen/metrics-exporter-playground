@@ -26,13 +26,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	exporter := pushmetric.Export(jobName, applicationName, pushInterval)
-
-	// // 必要に応じて追加する
+	// カスタムクライアントを使用する場合
 	// client := NewCustomClient()
-	// exporter.WithClient(client)
+	// config.
+	config := pushmetric.ExportConfig(jobName, applicationName, pushInterval)
+	// config := pushmetric.ExportConfig(jobName, applicationName, pushInterval).WithClient(client)
 
-	go exporter.Run(ctx)
+	go config.RuntineSequentialExporter(ctx)
 
 	// wait main routine
 	time.Sleep(lifeTime)

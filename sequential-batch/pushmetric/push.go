@@ -19,19 +19,21 @@ type Exporter struct {
 	client          *http.Client // optional
 }
 
-func Export(jobName, applicationName string, interval time.Duration) *Exporter {
+func ExportConfig(jobName, applicationName string, interval time.Duration) *Exporter {
 	return &Exporter{
 		jobName:         jobName,
 		applicationName: applicationName,
 		interval:        interval,
+		client:          &http.Client{},
 	}
 }
 
-func (e *Exporter) WithClient(client *http.Client) {
+func (e *Exporter) WithClient(client *http.Client) *Exporter {
 	e.client = client
+	return e
 }
 
-func (e *Exporter) Run(ctx context.Context) {
+func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 	ticker := time.NewTicker(e.interval)
 	defer ticker.Stop()
 
