@@ -16,10 +16,10 @@ type Exporter struct {
 	jobName         string
 	applicationName string
 	interval        time.Duration
-	client          *http.Client // optional
+	client          *http.Client
 }
 
-func ExportConfig(jobName, applicationName string, interval time.Duration) *Exporter {
+func New(jobName, applicationName string, interval time.Duration) *Exporter {
 	return &Exporter{
 		jobName:         jobName,
 		applicationName: applicationName,
@@ -28,11 +28,13 @@ func ExportConfig(jobName, applicationName string, interval time.Duration) *Expo
 	}
 }
 
+// WithClient sets the HTTP client for the Exporter and returns the modified Exporter instance.
 func (e *Exporter) WithClient(client *http.Client) *Exporter {
 	e.client = client
 	return e
 }
 
+// RuntineSequentialExporter continuously collects metrics and pushes them to the Pushgateway.
 func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 	ticker := time.NewTicker(e.interval)
 	defer ticker.Stop()
@@ -45,7 +47,7 @@ func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 				InstanceName:    getInstanceName(),
 			}
 
-			m := getMetrics() // getMetrics
+			m := getMetrics()
 
 			UpdateGaugeMetric(labels, m.CpuUsage, m.MemoryUsage)
 			IncrementCounterMetric(labels)
@@ -55,6 +57,7 @@ func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 	}
 }
 
+// export pushes the metrics to the Pushgateway.
 func export(ctx context.Context, jobName string, client *http.Client) {
 	if err := pushMetrics(ctx, pushGatewayEndPoint, jobName, client, RegisterMetrics()...); err != nil {
 		log.Println("Failed to push metrics:", err)

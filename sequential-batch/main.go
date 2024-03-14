@@ -26,11 +26,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := pushmetric.ExportConfig(jobName, applicationName, pushInterval)
+	config := pushmetric.New(jobName, applicationName, pushInterval)
 
 	// // カスタムクライアントを使用する場合
 	// client := NewCustomClient()
-	// config := pushmetric.ExportConfig(jobName, applicationName, pushInterval).WithClient(client)
+	// config := pushmetric.New(jobName, applicationName, pushInterval).WithClient(client)
 
 	go config.RuntineSequentialExporter(ctx)
 
@@ -41,7 +41,7 @@ func main() {
 
 // カスタムクライアントを定義
 func NewCustomClient() *http.Client {
-	requestTimeoutLimit := 5 * time.Second // 5 秒間 レスポンスがない場合にタイムアウトエラー
+	requestTimeoutLimit := 1 * time.Microsecond // 5 秒間 レスポンスがない場合にタイムアウトエラー
 
 	return &http.Client{
 		Timeout:   requestTimeoutLimit,
