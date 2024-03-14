@@ -12,15 +12,34 @@ import (
 
 const pushGatewayEndPoint = "http://localhost:9091"
 
-func RoutineSequentialExport(ctx context.Context, client *http.Client, jobName, applicationName string, interval time.Duration) {
-	ticker := time.NewTicker(interval)
+type Exporter struct {
+	jobName         string
+	applicationName string
+	interval        time.Duration
+	client          *http.Client // optional
+}
+
+func Export(jobName, applicationName string, interval time.Duration) *Exporter {
+	return &Exporter{
+		jobName:         jobName,
+		applicationName: applicationName,
+		interval:        interval,
+	}
+}
+
+func (e *Exporter) WithClient(client *http.Client) {
+	e.client = client
+}
+
+func (e *Exporter) Run(ctx context.Context) {
+	ticker := time.NewTicker(e.interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			labels := &CustomLabels{
-				ApplicationName: applicationName,
+				ApplicationName: e.applicationName,
 				InstanceName:    getInstanceName(),
 			}
 
@@ -29,12 +48,12 @@ func RoutineSequentialExport(ctx context.Context, client *http.Client, jobName, 
 			UpdateGaugeMetric(labels, m.CpuUsage, m.MemoryUsage)
 			IncrementCounterMetric(labels)
 
-			export(ctx, client, jobName)
+			export(ctx, e.jobName, e.client)
 		}
 	}
 }
 
-func export(ctx context.Context, client *http.Client, jobName string) {
+func export(ctx context.Context, jobName string, client *http.Client) {
 	if err := pushMetrics(ctx, pushGatewayEndPoint, jobName, client, RegisterMetrics()...); err != nil {
 		log.Println("Failed to push metrics:", err)
 	} else {
@@ -44,7 +63,20 @@ func export(ctx context.Context, client *http.Client, jobName string) {
 
 // pushMetrics pushes the provided collectors to the specified endpoint with the given job name.
 func pushMetrics(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors ...prometheus.Collector) error {
-	pusher := push.New(endpoint, jobName).Client(client)
+	pusher := push.New(endpoint, jobName)
+	if client != nil {
+		pusher = pusher.Client(client)
+	}
+
+	for _, collector := range collectors {
+		pusher = pusher.Collector(collector)
+	}
+
+	return pusher.PushContext(ctx)
+}
+
+func pushMetricsWithCustomClient(ctx context.Context, endpoint string, jobName string, collectors ...prometheus.Collector) error {
+	pusher := push.New(endpoint, jobName)
 
 	for _, collector := range collectors {
 		pusher = pusher.Collector(collector)
