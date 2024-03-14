@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	pushInterval = 3 * time.Second // 3 秒毎に PushGateway に送信
+	pushInterval = 3 * time.Second // 1 秒毎に PushGateway に送信
 	lifeTime     = 1 * time.Minute // 1 分後にJobを終了
 )
 

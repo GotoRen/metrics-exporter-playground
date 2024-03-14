@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
 // Define custom metric labels.
@@ -15,24 +17,24 @@ type CustomLabels struct {
 
 // Define metric values.
 type Metrics struct {
-	CpuUsage     float64
-	MemoryUsage  int64
-	RequestCount int64
+	CpuUtilization    float64
+	MemoryUtilization float64
+	RequestCount      int64
 }
 
 // Define gauge metrics.
 var (
-	cpuUsageMetric = prometheus.NewGaugeVec(
+	cpuUtilizationMetric = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cpu_usage",
+			Name: "cpu_utilization",
 			Help: "CPU usage of the application",
 		},
 		[]string{"application_name", "instance"},
 	)
 
-	memoryUsageMetric = prometheus.NewGaugeVec(
+	memoryUtilizationMetric = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "memory_usage",
+			Name: "memory_utilization",
 			Help: "Memory usage of the application",
 		},
 		[]string{"application_name", "instance"},
@@ -58,8 +60,8 @@ func init() {
 // Register registers all the metrics collectors.
 func Register(r prometheus.Registerer) {
 	r.MustRegister(
-		cpuUsageMetric,
-		memoryUsageMetric,
+		cpuUtilizationMetric,
+		memoryUtilizationMetric,
 		requestCountMetric,
 	)
 }
@@ -67,16 +69,16 @@ func Register(r prometheus.Registerer) {
 // RegisterMetrics returns a slice of all the metrics collectors.
 func RegisterMetrics() []prometheus.Collector {
 	return []prometheus.Collector{
-		cpuUsageMetric,
-		memoryUsageMetric,
+		cpuUtilizationMetric,
+		memoryUtilizationMetric,
 		requestCountMetric,
 	}
 }
 
 // UpdateGaugeMetric updates gauge metrics with given values.
-func UpdateGaugeMetric(l *CustomLabels, cpuUsage float64, memoryUsage int64) {
-	cpuUsageMetric.WithLabelValues(l.ApplicationName, l.InstanceName).Set(cpuUsage)
-	memoryUsageMetric.WithLabelValues(l.ApplicationName, l.InstanceName).Set(float64(memoryUsage))
+func UpdateGaugeMetric(l *CustomLabels, cpuUtilization, memoryUtilization float64) {
+	cpuUtilizationMetric.WithLabelValues(l.ApplicationName, l.InstanceName).Set(cpuUtilization)
+	memoryUtilizationMetric.WithLabelValues(l.ApplicationName, l.InstanceName).Set(memoryUtilization)
 }
 
 // IncrementCounterMetric increments counter metric.
@@ -96,11 +98,18 @@ func getInstanceName() string {
 
 // getMetrics returns the collected metrics.
 func getMetrics() *Metrics {
-	m := new(Metrics)
+	cpuUtilization, err := cpu.Percent(0, false)
+	if err != nil {
+		log.Println("Error getting CPU usage:", err)
+	}
 
-	// TODO
-	m.CpuUsage = 0.85
-	m.MemoryUsage = 512
+	memoryUtilization, err := mem.VirtualMemory()
+	if err != nil {
+		log.Println("Error getting memory usage:", err)
+	}
 
-	return m
+	return &Metrics{
+		CpuUtilization:    cpuUtilization[0],
+		MemoryUtilization: memoryUtilization.UsedPercent,
+	}
 }

@@ -50,7 +50,7 @@ func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 
 			m := getMetrics()
 
-			UpdateGaugeMetric(labels, m.CpuUsage, m.MemoryUsage)
+			UpdateGaugeMetric(labels, m.CpuUtilization, m.MemoryUtilization)
 			IncrementCounterMetric(labels)
 
 			export(ctx, e.jobName, e.client)
