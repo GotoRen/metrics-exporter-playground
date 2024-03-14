@@ -94,6 +94,7 @@ func getInstanceName() string {
 	return hostname
 }
 
+// getMetrics returns the collected metrics.
 func getMetrics() *Metrics {
 	m := new(Metrics)
 
