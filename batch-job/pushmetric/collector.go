@@ -15,7 +15,7 @@ func NewCollector() *Collector {
 
 // WithDefaultMetrics adds default metrics to collectors.
 func (c *Collector) WithDefaultMetrics() *Collector {
-	c.collectors = append(c.collectors, cpuUtilizationMetric, requestCountMetric)
+	c.collectors = append(c.collectors, cpuUtilizationMetric, memoryUtilizationMetric, pushCountMetric)
 	return c
 }
 

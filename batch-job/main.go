@@ -8,6 +8,7 @@ import (
 
 	"github.com/GotoRen/metrics-exporter-playground/batch-job/pushmetric"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/net"
 )
 
 const (
@@ -21,6 +22,25 @@ const (
 	lifeTime     = 1 * time.Minute // 1 分後に Job を終了
 )
 
+// カスタムメトリクスを定義
+var (
+	bytesSentCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "network_bytes_sent",
+			Help: "Total bytes sent over the network",
+		},
+		[]string{"application_name", "instance"},
+	)
+
+	bytesRecvCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "network_bytes_received",
+			Help: "Total bytes received over the network",
+		},
+		[]string{"application_name", "instance"},
+	)
+)
+
 func main() {
 	log.Println("CronJob starting...")
 
@@ -32,24 +52,15 @@ func main() {
 	collector := pushmetric.NewCollector()
 
 	// カスタムメトリクスを追加
-	memoryUtilizationMetric := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "memory_utilization",
-			Help: "Memory usage of the application",
-		},
-		[]string{"application_name", "instance"},
-	)
-
-	collector.WithDefaultMetrics().WithCustomMetrics(memoryUtilizationMetric)
+	// collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
 	// // もしデフォルトのメトリクスを使用しない場合
-	// collector.WithCustomMetrics(memoryUtilizationMetric)
+	collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
 
 	// エクスポートメトリクス情報を登録する
-	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
-
+	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
 	// // カスタムクライアントを使用する場合
-	// client := WithCustomClient()
-	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint).WithClient(client)
+	client := WithCustomClient()
+	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector).WithClient(client)
 
 	go config.RuntineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスをエクスポートする
 
@@ -62,11 +73,19 @@ func main() {
 		applicationNameLabelValue := applicationName
 		instanceNameLavelValue := pushmetric.GetInstanceName()
 
+		netInfo, err := net.IOCounters(true)
+		if err != nil {
+			log.Println("Error getting network I/O info:", err)
+		}
+
 		for {
 			select {
 			case <-ticker.C:
-				currentMemoryUtilization := pushmetric.GetMemoryUtilization()
-				memoryUtilizationMetric.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(currentMemoryUtilization)
+				for _, nic := range netInfo {
+					// カウンターにネットワークI/O情報を追加
+					bytesSentCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Add(float64(nic.BytesSent))
+					bytesRecvCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Add(float64(nic.BytesRecv))
+				}
 			}
 		}
 	}()

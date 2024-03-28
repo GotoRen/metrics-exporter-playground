@@ -18,25 +18,34 @@ var (
 		},
 		[]string{"application_name", "instance"},
 	)
+
+	memoryUtilizationMetric = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "memory_utilization",
+			Help: "Memory usage of the application",
+		},
+		[]string{"application_name", "instance"},
+	)
 )
 
 // Define default CounterMetric
 var (
-	requestCountMetric = prometheus.NewCounterVec(
+	pushCountMetric = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "request_count",
-			Help: "Number of requests processed",
+			Name: "push_count",
+			Help: "Number of times sent to PushGateway",
 		},
 		[]string{"application_name", "instance"},
 	)
 )
 
 func (e *Exporter) updateDefaultnMetric(lvs ...string) {
-	currentCpuUtilization := GetCpuUtilization()
+	currentCpuUtilization := getCpuUtilization()
+	currentMemoryUtilization := getMemoryUtilization()
 
 	cpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCpuUtilization)
-	requestCountMetric.WithLabelValues(lvs...).Inc()
-
+	memoryUtilizationMetric.WithLabelValues(lvs...).Set(currentMemoryUtilization)
+	pushCountMetric.WithLabelValues(lvs...).Inc()
 }
 
 // GetInstanceName returns the hostname of the current instance.
@@ -49,8 +58,8 @@ func GetInstanceName() string {
 	return hostname
 }
 
-// GetCpuUtilization retrieves the current CPU utilization percentage.
-func GetCpuUtilization() float64 {
+// getCpuUtilization retrieves the current CPU utilization percentage.
+func getCpuUtilization() float64 {
 	cpuUtilization, err := cpu.Percent(0, false)
 	if err != nil {
 		log.Println("Error getting CPU usage:", err)
@@ -59,8 +68,8 @@ func GetCpuUtilization() float64 {
 	return cpuUtilization[0]
 }
 
-// GetMemoryUtilization retrieves the current memory utilization percentage.
-func GetMemoryUtilization() float64 {
+// getMemoryUtilization retrieves the current memory utilization percentage.
+func getMemoryUtilization() float64 {
 	memoryUtilization, err := mem.VirtualMemory()
 	if err != nil {
 		log.Println("Error getting memory usage:", err)
