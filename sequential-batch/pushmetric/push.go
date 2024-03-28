@@ -10,21 +10,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 )
 
-const pushGatewayEndPoint = "http://localhost:9091"
-
 type Exporter struct {
 	jobName         string
 	applicationName string
-	interval        time.Duration
+	pushInterval    time.Duration
+	collector       *Collector
 	client          *http.Client
+	endPoint        string
 }
 
-func New(jobName, applicationName string, interval time.Duration) *Exporter {
+func New(jobName, applicationName string, pushInterval time.Duration, endPoint string, collector *Collector) *Exporter {
 	return &Exporter{
 		jobName:         jobName,
 		applicationName: applicationName,
-		interval:        interval,
+		pushInterval:    pushInterval,
 		client:          &http.Client{},
+		endPoint:        endPoint,
+		collector:       collector,
 	}
 }
 
@@ -37,30 +39,20 @@ func (e *Exporter) WithClient(client *http.Client) *Exporter {
 
 // RuntineSequentialExporter continuously collects metrics and pushes them to the Pushgateway.
 func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
-	ticker := time.NewTicker(e.interval)
+	ticker := time.NewTicker(e.pushInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			labels := &CustomLabels{
-				ApplicationName: e.applicationName,
-				InstanceName:    getInstanceName(),
-			}
-
-			m := getMetrics()
-
-			UpdateGaugeMetric(labels, m.CpuUtilization, m.MemoryUtilization)
-			IncrementCounterMetric(labels)
-
-			export(ctx, e.jobName, e.client)
+			e.export(ctx)
 		}
 	}
 }
 
 // export pushes the metrics to the Pushgateway.
-func export(ctx context.Context, jobName string, client *http.Client) {
-	if err := pushMetrics(ctx, pushGatewayEndPoint, jobName, client, RegisterMetrics()...); err != nil {
+func (e *Exporter) export(ctx context.Context) {
+	if err := pushMetrics(ctx, e.endPoint, e.jobName, e.client, e.collector.collectors); err != nil {
 		log.Println("Failed to push metrics:", err)
 	} else {
 		log.Println("Metrics pushed successfully")
@@ -68,7 +60,7 @@ func export(ctx context.Context, jobName string, client *http.Client) {
 }
 
 // pushMetrics pushes the provided collectors to the specified endpoint with the given job name.
-func pushMetrics(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors ...prometheus.Collector) error {
+func pushMetrics(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors []prometheus.Collector) error {
 	pusher := push.New(endpoint, jobName)
 	if client != nil {
 		pusher = pusher.Client(client)
