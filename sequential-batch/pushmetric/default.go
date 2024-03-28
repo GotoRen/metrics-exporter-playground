@@ -9,7 +9,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-// デフォルトの GaugeMetric を定義：任意で呼び出す
+// Define default GaugeMetric
 var (
 	cpuUtilizationMetric = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -20,7 +20,7 @@ var (
 	)
 )
 
-// デフォルトの CounterMetric を定義：任意で呼び出す
+// Define default CounterMetric
 var (
 	requestCountMetric = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -31,11 +31,12 @@ var (
 	)
 )
 
-func (collector *Collector) UpdateDefaultnMetric(lvs ...string) {
-	value := GetCpuUtilization()
-	SetGaugeMetric(cpuUtilizationMetric, value, lvs...)
+func (e *Exporter) updateDefaultnMetric(lvs ...string) {
+	currentCpuUtilization := GetCpuUtilization()
 
-	IncrementCounterMetric(requestCountMetric, lvs...)
+	cpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCpuUtilization)
+	requestCountMetric.WithLabelValues(lvs...).Inc()
+
 }
 
 // GetInstanceName returns the hostname of the current instance.
@@ -48,6 +49,7 @@ func GetInstanceName() string {
 	return hostname
 }
 
+// GetCpuUtilization retrieves the current CPU utilization percentage.
 func GetCpuUtilization() float64 {
 	cpuUtilization, err := cpu.Percent(0, false)
 	if err != nil {
@@ -57,6 +59,7 @@ func GetCpuUtilization() float64 {
 	return cpuUtilization[0]
 }
 
+// GetMemoryUtilization retrieves the current memory utilization percentage.
 func GetMemoryUtilization() float64 {
 	memoryUtilization, err := mem.VirtualMemory()
 	if err != nil {

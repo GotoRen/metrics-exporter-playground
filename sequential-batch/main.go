@@ -17,8 +17,8 @@ const (
 )
 
 const (
-	pushInterval = 3 * time.Second // 3 秒毎にメトリクスを送信する例
-	lifeTime     = 3 * time.Minute // 1 分後にJobを終了
+	pushInterval = 3 * time.Second // 3 秒毎に PushGateway にメトリクスを送信する例
+	lifeTime     = 1 * time.Minute // 1 分後に Job を終了
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// ここで Collector を定義
+	// Collector を定義
 	collector := pushmetric.NewCollector()
 
 	// カスタムメトリクスを追加
@@ -41,39 +41,42 @@ func main() {
 	)
 
 	collector.WithDefaultMetrics().WithCustomMetrics(memoryUtilizationMetric)
+	// // もしデフォルトのメトリクスを使用しない場合
+	// collector.WithCustomMetrics(memoryUtilizationMetric)
 
-	// ここで エクスポートメトリクス 情報を登録
+	// エクスポートメトリクス情報を登録する
 	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
 
 	// // カスタムクライアントを使用する場合
 	// client := WithCustomClient()
 	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint).WithClient(client)
 
-	go config.RuntineSequentialExporter(ctx) // push ルーチンを回す
+	go config.RuntineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスをエクスポートする
 
-	// ここで任意のタイミング（とりあえず 5 秒毎に）でメトリクス情報を更新
+	// メトリクスを任意のタイミングで更新する
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(1 * time.Second) // 1 秒毎にメトリクスが更新される場合
 		defer ticker.Stop()
+
+		// Set label values
+		applicationNameLabelValue := applicationName
+		instanceNameLavelValue := pushmetric.GetInstanceName()
+
 		for {
 			select {
 			case <-ticker.C:
-				value := pushmetric.GetMemoryUtilization()
-				label1 := applicationName
-				label2 := pushmetric.GetInstanceName()
-				pushmetric.SetGaugeMetric(memoryUtilizationMetric, value, label1, label2)
-
-				collector.UpdateDefaultnMetric(label1, label2)
+				currentMemoryUtilization := pushmetric.GetMemoryUtilization()
+				memoryUtilizationMetric.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(currentMemoryUtilization)
 			}
 		}
 	}()
 
-	// wait main routine
+	// make the main routine wait.
 	time.Sleep(lifeTime)
 	log.Println("CronJob completed")
 }
 
-// 任意: カスタムクライアントを定義
+// Example: Define a custom HTTP client.
 func WithCustomClient() *http.Client {
 	requestTimeoutLimit := 5 * time.Second // 5 秒間 レスポンスがない場合にタイムアウトエラー
 
