@@ -52,7 +52,7 @@ func main() {
 	collector := pushmetric.NewCollector()
 
 	// カスタムメトリクスを追加
-	collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
+	collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter) // 任意のメトリクスを追加できる
 	// // もしデフォルトのメトリクスを使用しない場合
 	// collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
 
