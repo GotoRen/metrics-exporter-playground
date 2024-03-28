@@ -52,15 +52,15 @@ func main() {
 	collector := pushmetric.NewCollector()
 
 	// カスタムメトリクスを追加
-	// collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
+	collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
 	// // もしデフォルトのメトリクスを使用しない場合
-	collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
+	// collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
 
 	// エクスポートメトリクス情報を登録する
-	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
+	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
 	// // カスタムクライアントを使用する場合
-	client := WithCustomClient()
-	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector).WithClient(client)
+	// client := WithCustomClient()
+	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector).WithClient(client)
 
 	go config.RuntineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスをエクスポートする
 
