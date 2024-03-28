@@ -52,7 +52,7 @@ func (e *Exporter) updateDefaultnMetric(lvs ...string) {
 func GetInstanceName() string {
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatal("Failed to get hostname:", err)
+		return ""
 	}
 
 	return hostname
