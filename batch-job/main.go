@@ -82,7 +82,6 @@ func main() {
 			select {
 			case <-ticker.C:
 				for _, nic := range netInfo {
-					// カウンターにネットワークI/O情報を追加
 					bytesSentCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Add(float64(nic.BytesSent))
 					bytesRecvCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Add(float64(nic.BytesRecv))
 				}

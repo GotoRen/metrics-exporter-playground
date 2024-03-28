@@ -44,22 +44,22 @@ func (e *Exporter) RuntineSequentialExporter(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			e.updateDefaultnMetric(applicationNameLabelValue, instanceNameLabelValue)
-			e.export(ctx)
+			e.Export(ctx)
 		}
 	}
 }
 
-// export exports the metrics to the Pushgateway.
-func (e *Exporter) export(ctx context.Context) {
-	if err := pushMetrics(ctx, e.endPoint, e.jobName, e.client, e.collector.collectors); err != nil {
+// Export exports the metrics to the Pushgateway.
+func (e *Exporter) Export(ctx context.Context) {
+	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.collectors); err != nil {
 		log.Println("Failed to push metrics:", err)
 	} else {
 		log.Println("Metrics pushed successfully")
 	}
 }
 
-// pushMetrics pushes the provided collectors to the specified endpoint with the given job name.
-func pushMetrics(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors []prometheus.Collector) error {
+// export exports the provided collectors to the specified endpoint with the given job name.
+func export(ctx context.Context, endpoint string, jobName string, client *http.Client, collectors []prometheus.Collector) error {
 	pusher := push.New(endpoint, jobName)
 	if client != nil {
 		pusher = pusher.Client(client)
