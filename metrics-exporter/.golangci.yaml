@@ -1,0 +1,115 @@
+run:
+  go: "1.22"
+  deadline: 5m
+  build-tags:
+    - integration
+
+issues:
+  exclude-rules:
+    - linters:
+        - lll
+      source: "^//"
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goerr113
+        - lll
+
+linters-settings:
+  gocyclo:
+    min-complexity: 10
+  gocritic:
+    enabled-checks:
+      - appendCombine
+      - argOrder
+      - assignOp
+      - badCall
+      - badCond
+      - boolExprSimplify
+      - builtinShadow
+      - captLocal
+      - caseOrder
+      - codegenComment
+      - commentedOutCode
+      - commentedOutImport
+      - defaultCaseOrder
+      - deprecatedComment
+      - docStub
+      - dupArg
+      - dupBranchBody
+      - dupCase
+      - dupImport
+      - dupSubExpr
+      - elseif
+      - emptyFallthrough
+      - emptyStringTest
+      - equalFold
+      - flagDeref
+      - flagName
+      - hexLiteral
+      - importShadow
+      - indexAlloc
+      - initClause
+      - methodExprCall
+      - nestingReduce
+      - newDeref
+      - nilValReturn
+      - octalLiteral
+      - offBy1
+      - paramTypeCombine
+      - ptrToRefParam
+      - rangeExprCopy
+      - rangeValCopy
+      - regexpMust
+      - sloppyLen
+      - sloppyReassign
+      - stringXbytes
+      - switchTrue
+      - typeAssertChain
+      - typeSwitchVar
+      - typeUnparen
+      - underef
+      - unnecessaryBlock
+      - unslice
+      - valSwap
+      - weakCond
+      - wrapperFunc
+      - yodaStyleExpr
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - errcheck
+    - errorlint
+    - exportloopref
+    - gochecknoglobals
+    - goconst
+    # disable gocritic temporaly, caused by not supporting go v1.18
+    # https://github.com/go-critic/go-critic/issues/1193
+    # - gocritic
+    - gocyclo
+    - goerr113
+    - goimports
+    - golint
+    - gomnd
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - noctx
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+
+service:
+  golangci-lint-version: 1.46.2
