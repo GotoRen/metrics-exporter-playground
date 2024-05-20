@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/GotoRen/metrics-exporter-playground/metrics-exporter/pushmetric"
@@ -18,8 +23,9 @@ const (
 )
 
 const (
-	pushInterval = 3 * time.Second // 3 秒毎に PushGateway にメトリクスを送信する例
-	lifeTime     = 1 * time.Minute // 1 分後に Job を終了
+	pushInterval   = 3 * time.Second  // PushGateway にメトリクスを送信する間隔
+	lifeTime       = 30 * time.Second // プロセスの実行時間（CronJob の実行時間に相当）
+	gracefulPeriod = 5 * time.Second  // プロセス終了までの待機時間
 )
 
 // カスタムメトリクスを定義
@@ -42,22 +48,24 @@ var (
 )
 
 func main() {
-	log.Println("CronJob starting...")
+	log.Println("Job starting...")
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), lifeTime)
 	defer cancel()
 
+	// シグナルを捕捉するチャネルを設定
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
 	// Collector を定義
 	collector := pushmetric.NewCollector()
 
-	// カスタムメトリクスを追加
-	collector.WithDefaultMetrics().WithCustomMetrics(bytesSentCounter, bytesRecvCounter) // 任意のメトリクスを追加できる
-	// // もしデフォルトのメトリクスを使用しない場合
-	// collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter)
+	// デフォルトメトリクスを追加
+	collector.WithDefaultMetrics()
 
-	// エクスポートメトリクス情報を登録する
-	// config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector)
+	// カスタムメトリクスを追加
+	collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter) // 任意のメトリクスを追加できる
 
 	// カスタムクライアントを使用する場合
 	client := WithCustomClient()
@@ -65,11 +73,16 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- config.RoutineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスをエクスポートする
+		errCh <- config.RoutineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスを出力
 	}()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1) // Add a WaitGroup counter
 
 	// メトリクスを任意のタイミングで更新する
 	go func() {
+		defer wg.Done() // 終了時にこのゴルーチンが完了したことを WaitGroup に通知する
+
 		ticker := time.NewTicker(1 * time.Second) // 1 秒毎にメトリクスが更新される場合
 		defer ticker.Stop()
 
@@ -82,6 +95,8 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				fmt.Println("[DEBUG] call: Update default metrics")
+
 				bytesSent, bytesRecv := monitorNetworkSpeed()
 				bytesSentCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(bytesSent)
 				bytesRecvCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(bytesRecv)
@@ -90,13 +105,27 @@ func main() {
 	}()
 
 	select {
-	case err := <-errCh:
+	case err := <-errCh: // エラーが発生した場合
 		if err != nil {
-			panic(err)
+			log.Fatalf("Exporter error: %v\n", err)
 		}
-	case <-ctx.Done():
-		log.Println("CronJob completed")
+	case <-signalChan: // シグナルが送信された場合
+		log.Println("Received os.Signal. Initiating graceful shutdown...")
+	case <-ctx.Done(): // 正常に終了する場合
 	}
+
+	cancel()  // コンテキストをキャンセルしてメトリクス更新の goroutine を停止
+	wg.Wait() // メトリクス更新 goroutine の終了を待機
+
+	// 最終的なメトリクスをエクスポートしてからシャットダウンを実行
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), gracefulPeriod)
+	defer shutdownCancel()
+
+	if err := config.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("failed to gracefully shutdown: %v\n", err)
+	}
+
+	log.Println("Job completed")
 }
 
 //--------------------------------------------------------------------------------------------------------------//

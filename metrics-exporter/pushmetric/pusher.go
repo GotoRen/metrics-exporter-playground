@@ -63,6 +63,8 @@ func (e *Exporter) Export(ctx context.Context) error {
 		return fmt.Errorf("failed to push metrics: %w", err)
 	}
 
+	// fmt.Println("[DEBUG] call: Push metrics")
+
 	return nil
 }
 
@@ -84,4 +86,13 @@ func export(ctx context.Context, ep string, name string, client *http.Client, co
 func (e *Exporter) WithClient(client *http.Client) *Exporter {
 	e.client = client
 	return e
+}
+
+// Shutdown exports the final metrics and shuts down the exporter.
+func (e *Exporter) Shutdown(ctx context.Context) error {
+	if err := e.Export(ctx); err != nil {
+		return fmt.Errorf("error occurred while exporting final metrics: %w", err)
+	}
+
+	return nil
 }
