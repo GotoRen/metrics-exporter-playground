@@ -63,8 +63,6 @@ func (e *Exporter) Export(ctx context.Context) error {
 		return fmt.Errorf("failed to push metrics: %w", err)
 	}
 
-	// fmt.Println("[DEBUG] call: Push metrics")
-
 	return nil
 }
 
