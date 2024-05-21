@@ -23,9 +23,9 @@ const (
 )
 
 const (
-	pushInterval   = 3 * time.Second  // PushGateway にメトリクスを送信する間隔
-	lifeTime       = 30 * time.Second // プロセスの実行時間（CronJob の実行時間に相当）
-	gracefulPeriod = 5 * time.Second  // プロセス終了までの待機時間
+	pushInterval = 3 * time.Second  // PushGateway にメトリクスを送信する間隔
+	lifeTime     = 30 * time.Second // プロセスの実行時間（CronJob の実行時間に相当）
+	gracePeriod  = 5 * time.Second  // プロセス終了までの待機時間
 )
 
 // カスタムメトリクスを定義
@@ -117,11 +117,7 @@ func main() {
 	cancel()  // コンテキストをキャンセルしてメトリクス更新の goroutine を停止
 	wg.Wait() // メトリクス更新 goroutine の終了を待機
 
-	// 最終的なメトリクスをエクスポートしてからシャットダウンを実行
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), gracefulPeriod)
-	defer shutdownCancel()
-
-	if err := config.Shutdown(shutdownCtx); err != nil {
+	if err := config.Shutdown(gracePeriod); err != nil {
 		log.Fatalf("failed to gracefully shutdown: %v\n", err)
 	}
 

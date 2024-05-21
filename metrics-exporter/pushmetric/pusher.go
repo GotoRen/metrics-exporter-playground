@@ -89,8 +89,11 @@ func (e *Exporter) WithClient(client *http.Client) *Exporter {
 }
 
 // Shutdown exports the final metrics and shuts down the exporter.
-func (e *Exporter) Shutdown(ctx context.Context) error {
-	if err := e.Export(ctx); err != nil {
+func (e *Exporter) Shutdown(gracePeriod time.Duration) error {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), gracePeriod)
+	defer shutdownCancel()
+
+	if err := e.Export(shutdownCtx); err != nil {
 		return fmt.Errorf("error occurred while exporting final metrics: %w", err)
 	}
 
