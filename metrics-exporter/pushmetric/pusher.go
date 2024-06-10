@@ -3,6 +3,7 @@ package pushmetric
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 )
 
+// Exporter はPushGateway にメトリクスを送信する際の情報を登録します。
 type Exporter struct {
 	jobName         string
 	applicationName string
@@ -45,11 +47,25 @@ func (e *Exporter) RoutineSequentialExporter(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			if err := updateDefaultMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
-				return fmt.Errorf("error updating metrics: %w", err)
+			// CPU
+			if err := updateCPUMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
+				return fmt.Errorf(": %w", err)
 			}
-			if err := e.Export(ctx); err != nil {
-				return fmt.Errorf("error exporting metrics: %w", err)
+
+			// Memory
+			if err := updateMemoryMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
+				return fmt.Errorf(": %w", err)
+			}
+
+			// Push Count
+			if err := updatePushCountMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
+				return fmt.Errorf(": %w", err)
+			}
+
+			fmt.Println("[DEBUG] 非同期メトリクスを更新しました")
+
+			if err := e.AsyncExport(ctx); err != nil {
+				return fmt.Errorf("hoge: %w", err)
 			}
 		}
 	}
@@ -57,12 +73,23 @@ func (e *Exporter) RoutineSequentialExporter(ctx context.Context) error {
 	return nil
 }
 
-// Export exports the metrics to the Pushgateway.
-func (e *Exporter) Export(ctx context.Context) error {
-	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.collectors); err != nil {
-		return fmt.Errorf("failed to push metrics: %w", err)
+// 非同期的でメトリクスを出力する場合
+func (e *Exporter) AsyncExport(ctx context.Context) error {
+	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.asynCollectors); err != nil {
+		return fmt.Errorf("hoge: %w", err)
+	} else {
+		log.Println("[DEBUG] 非同期メトリクスを出力しました。")
 	}
+	return nil
+}
 
+// 任意のタイミングでメトリクスを出力する場合
+func (e *Exporter) SyncExport(ctx context.Context) error {
+	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.syncCollectors); err != nil {
+		return fmt.Errorf("hoge: %w", err)
+	} else {
+		log.Println("[DEBUG] 同期メトリクスを出力しました。")
+	}
 	return nil
 }
 
@@ -91,8 +118,14 @@ func (e *Exporter) Shutdown(gracePeriod time.Duration) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), gracePeriod)
 	defer shutdownCancel()
 
-	if err := e.Export(shutdownCtx); err != nil {
-		return fmt.Errorf("error occurred while exporting final metrics: %w", err)
+	fmt.Println("Graceful Shutdown...")
+
+	if err := e.AsyncExport(shutdownCtx); err != nil {
+		return fmt.Errorf("hoge: %w", err)
+	}
+
+	if err := e.SyncExport(shutdownCtx); err != nil {
+		return fmt.Errorf("hoge: %w", err)
 	}
 
 	return nil

@@ -9,17 +9,20 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-// Define default GaugeMetric.
+// Define CPU usage GaugeMetric.
 var (
-	cpuUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
+	CpuUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
 		prometheus.GaugeOpts{
 			Name: "cpu_utilization",
 			Help: "CPU usage of the application",
 		},
 		[]string{"application_name", "instance"},
 	)
+)
 
-	memoryUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
+// Define memory usage GaugeMetric.
+var (
+	MemoryUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
 		prometheus.GaugeOpts{
 			Name: "memory_utilization",
 			Help: "Memory usage of the application",
@@ -28,9 +31,9 @@ var (
 	)
 )
 
-// Define default CounterMetric.
+// Define push count CounterMetric.
 var (
-	pushCountMetric = prometheus.NewCounterVec( //nolint:gochecknoglobals
+	PushCountMetric = prometheus.NewCounterVec( //nolint:gochecknoglobals
 		prometheus.CounterOpts{
 			Name: "push_count",
 			Help: "Number of times sent to PushGateway",
@@ -39,22 +42,29 @@ var (
 	)
 )
 
-// updateDefaultMetric updates default metrics.
-func updateDefaultMetric(lvs ...string) error {
+// updateCPUMetric updates CPU metrics.
+func updateCPUMetric(lvs ...string) error {
 	currentCPUUtilization, err := getCPUUtilization()
 	if err != nil {
 		return fmt.Errorf("error getting CPU usage: %w", err)
 	}
+	CpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCPUUtilization)
+	return nil
+}
 
+// updateMemoryMetric updates memory metrics.
+func updateMemoryMetric(lvs ...string) error {
 	currentMemoryUtilization, err := getMemoryUtilization()
 	if err != nil {
 		return fmt.Errorf("error getting memory usage: %w", err)
 	}
+	MemoryUtilizationMetric.WithLabelValues(lvs...).Set(currentMemoryUtilization)
+	return nil
+}
 
-	cpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCPUUtilization)
-	memoryUtilizationMetric.WithLabelValues(lvs...).Set(currentMemoryUtilization)
-	pushCountMetric.WithLabelValues(lvs...).Inc()
-
+// updatePushCountMetric updates push count metrics.
+func updatePushCountMetric(lvs ...string) error {
+	PushCountMetric.WithLabelValues(lvs...).Inc()
 	return nil
 }
 
@@ -64,7 +74,6 @@ func GetInstanceName() string {
 	if err != nil {
 		return ""
 	}
-
 	return hostname
 }
 
@@ -74,7 +83,6 @@ func getCPUUtilization() (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to get CPU utilization: %w", err)
 	}
-
 	return cpuUtilization[0], nil
 }
 
@@ -84,6 +92,5 @@ func getMemoryUtilization() (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to get memory utilization: %w", err)
 	}
-
 	return memoryUtilization.UsedPercent, nil
 }

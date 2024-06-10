@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,19 +15,31 @@ import (
 	"github.com/shirou/gopsutil/net"
 )
 
+// 正常終了：CronJob が実行されたことにより終了（プログラムが終了する）=> ライブラリでは、これを ContextWithTimeOut として表現する
+// - 終了に伴う処理
+//   - Goroutine のキャンセル
+
+// 異常終了：SIGTERM 受信による強制シャットダウン
+// - 終了に伴う処理
+//   - Goroutine のキャンセル
+//   - メトリクスを出力して終了
+
 const (
-	applicationName     = "sample_apps"           // アプリケーション名
-	jobName             = "sample_job"            // Prometheus がエンドポイントグループを識別するための Job ラベル
-	pushGatewayEndPoint = "http://localhost:9091" // PushGateway エンドポイント
+	applicationName     = "sample_apps"           // 必須：アプリケーション名
+	jobName             = "sample_job"            // 必須：Prometheus がエンドポイントグループを識別するための Job ラベル
+	pushGatewayEndPoint = "http://localhost:9091" // 必須：PushGateway エンドポイント
 )
 
 const (
-	pushInterval = 3 * time.Second // PushGateway にメトリクスを送信する間隔
-	lifeTime     = 1 * time.Minute // プロセスの実行時間（CronJob の実行時間に相当）
-	gracePeriod  = 5 * time.Second // プロセス終了までの待機時間
+	pushInterval = 3 * time.Second // 必須：PushGateway にメトリクスを送信する間隔
+	gracePeriod  = 5 * time.Second // 必須：プロセス終了までの待機時間
 )
 
-// カスタムメトリクスを定義
+const (
+	lifeTime = 1 * time.Minute // 任意：プロセスの実行時間（CronJob の実行時間に相当）
+)
+
+// 任意：カスタムメトリクスを定義
 var (
 	bytesSentCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -35,7 +48,9 @@ var (
 		},
 		[]string{"application_name", "instance"},
 	)
+)
 
+var (
 	bytesRecvCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "network_bytes_received",
@@ -48,7 +63,7 @@ var (
 func main() {
 	log.Println("Job starting...")
 
-	// goroutine 制御用のコンテキストを追加
+	// 一定時間経過後後にキャンセル（ctx.Done）を実行（CronJob の正常終了）
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -59,25 +74,35 @@ func main() {
 	// 必須：Collector を定義
 	collector := pushmetric.NewCollector()
 
-	// 任意：デフォルトメトリクスを追加
-	collector.WithDefaultMetrics()
+	// 任意：ライブラリ側で準備しているカスタムメトリクスを登録（AsyncMetrics として登録）
+	collector.RegisterAsyncMetrics(
+		pushmetric.CpuUtilizationMetric,    // 必要に応じてデフォルトで準備しているメトリクスを登録
+		pushmetric.MemoryUtilizationMetric, // 必要に応じてデフォルトで準備しているメトリクスを登録
+		pushmetric.PushCountMetric,         // 必要に応じてデフォルトで準備しているメトリクスを登録
+		bytesSentCounter,
+	)
 
-	// 任意：カスタムメトリクスを追加
-	collector.WithCustomMetrics(bytesSentCounter, bytesRecvCounter) // 任意のメトリクスを追加できる
+	// 任意：ユーザ定義カスタムメトリクスを追加（SyncMetrics として登録）
+	collector.RegisterSyncMetrics(
+		bytesRecvCounter,
+	)
 
 	// 任意：カスタムクライアントを使用する場合
 	client := WithCustomClient()
+
+	// 必須：Exporter を定義
 	config := pushmetric.New(jobName, applicationName, pushInterval, pushGatewayEndPoint, collector).WithClient(client)
 
-	// RoutineSequentialExporter からのエラーを補足するためのチャネルを作成
-	errCh := make(chan error, 1)
+	// 任意：定常的にメトリクスを出力するエクスポータを起動します
+	errCh := make(chan error, 1) // RoutineSequentialExporter からのエラーを補足するためのチャネルを作成
 	go func() {
-		errCh <- config.RoutineSequentialExporter(ctx) // PushGateway にシーケンシャルにメトリクスを出力
+		errCh <- config.RoutineSequentialExporter(ctx)
 	}()
 
-	// -------------------------------------------------------------------------------------------------------------- //
-	// COMMENT: ライブラリの使用者はカスタムメトリクスの更新処理を書きます
+	fmt.Println("待機しています 1")
 
+	// -------------------------------------------------------------------------------------------------------------- //
+	// COMMENT: ライブラリの使用者はカスタムメトリクスの更新処理を書きます（任意のタイミング）
 	// メトリクスを任意のタイミングで更新
 	go func() {
 		ticker := time.NewTicker(1 * time.Second) // 1 秒毎にメトリクスが更新される場合
@@ -93,17 +118,20 @@ func main() {
 				return
 			case <-ticker.C:
 				// ex. 毎秒 ネットワーク送受信データ量を取得してメトリクスを更新
-				bytesSent, bytesRecv := monitorNetworkSpeed()
+				bytesSent, _ := monitorNetworkSpeed()
 				bytesSentCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(bytesSent)
-				bytesRecvCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(bytesRecv)
+
+				fmt.Println("[DEBUG] Sent:", bytesSent)
 			}
 		}
 	}()
 
+	fmt.Println("待機しています 2")
+
 	select {
-	case err := <-errCh: // エラーが発生した場合
+	case err := <-errCh:
 		if err != nil {
-			log.Fatalf("Exporter error: %v\n", err)
+			log.Fatal(err)
 		}
 	case sig := <-signalChan: // シグナルが送信された場合
 		log.Printf("Received os.Signal: %v. Initiating graceful shutdown...", sig)
@@ -113,7 +141,20 @@ func main() {
 
 	cancel() // メトリクス更新 の goroutine をキャンセル（ctx.Done を実行）する
 
-	// Graceful shutdown を実行
+	// -------------------------------------------------------------------------------------------------------------- //
+	// COMMENT: ライブラリの使用者はカスタムメトリクスの更新処理を書きます（任意のタイミング）
+	// 既存の Gouroutine 停止後に更新します
+	applicationNameLabelValue := applicationName
+	instanceNameLavelValue := pushmetric.GetInstanceName()
+	_, bytesRecv := monitorNetworkSpeed()
+	bytesRecvCounter.WithLabelValues(applicationNameLabelValue, instanceNameLavelValue).Set(bytesRecv)
+
+	fmt.Println("[DEBUG] Recv:", bytesRecv)
+	// -------------------------------------------------------------------------------------------------------------- //
+
+	fmt.Println("待機しています 4")
+
+	// 必須：Shutdown を実行して更新したメトリクスを確実に出力します
 	if err := config.Shutdown(gracePeriod); err != nil {
 		log.Fatalf("failed to gracefully shutdown: %v\n", err)
 	}

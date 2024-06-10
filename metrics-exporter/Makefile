@@ -18,6 +18,10 @@ cover/html: ## Generate HTML coverage report
 lint: ## Lint code
 	golangci-lint run -c ./../.golangci.yaml
 
+.PHONY: doc
+doc: ## Generate documentation
+	@echo "http://localhost:6060/pkg/github.com/GotoRen/metrics-exporter-playground/metrics-exporter/pushmetric/"; godoc -http=:6060
+
 
 
 # Makefile config

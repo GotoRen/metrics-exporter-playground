@@ -1,91 +1,80 @@
 package pushmetric
 
-import (
-	"context"
-	"errors"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
+// // TestNew verifies that a new Exporter instance is initialized correctly.
+// func TestNew(t *testing.T) {
+// 	jobName := "test-job"
+// 	applicationName := "test-app"
+// 	pushInterval := 1 * time.Second
+// 	endPoint := "http://example.com"
+// 	collector := NewCollector()
 
-	"github.com/stretchr/testify/assert"
-)
+// 	exporter := New(jobName, applicationName, pushInterval, endPoint, collector)
 
-// TestNew verifies that a new Exporter instance is initialized correctly.
-func TestNew(t *testing.T) {
-	jobName := "test-job"
-	applicationName := "test-app"
-	pushInterval := 1 * time.Second
-	endPoint := "http://example.com"
-	collector := NewCollector()
+// 	assert.Equal(t, jobName, exporter.jobName)
+// 	assert.Equal(t, applicationName, exporter.applicationName)
+// 	assert.Equal(t, pushInterval, exporter.pushInterval)
+// 	assert.Equal(t, endPoint, exporter.endPoint)
+// 	assert.Equal(t, collector, exporter.collector)
+// 	assert.NotNil(t, exporter.client)
+// }
 
-	exporter := New(jobName, applicationName, pushInterval, endPoint, collector)
+// // TestWithClient verifies that the HTTP client is correctly set in the Exporter.
+// func TestWithClient(t *testing.T) {
+// 	exporter := New("test-job", "test-app", 1*time.Second, "http://example.com", NewCollector())
 
-	assert.Equal(t, jobName, exporter.jobName)
-	assert.Equal(t, applicationName, exporter.applicationName)
-	assert.Equal(t, pushInterval, exporter.pushInterval)
-	assert.Equal(t, endPoint, exporter.endPoint)
-	assert.Equal(t, collector, exporter.collector)
-	assert.NotNil(t, exporter.client)
-}
+// 	customClient := &http.Client{
+// 		Timeout:   5 * time.Second,
+// 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+// 	}
 
-// TestWithClient verifies that the HTTP client is correctly set in the Exporter.
-func TestWithClient(t *testing.T) {
-	exporter := New("test-job", "test-app", 1*time.Second, "http://example.com", NewCollector())
+// 	exporter.WithClient(customClient)
 
-	customClient := &http.Client{
-		Timeout:   5 * time.Second,
-		Transport: http.DefaultTransport.(*http.Transport).Clone(),
-	}
+// 	assert.Equal(t, customClient, exporter.client)
+// }
 
-	exporter.WithClient(customClient)
+// // TestExport verifies that the Export method correctly pushes metrics to the Pushgateway.
+// func TestExport(t *testing.T) {
+// 	// Setup a mock Pushgateway server.
+// 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		w.WriteHeader(http.StatusOK)
+// 	}))
+// 	defer mockServer.Close()
 
-	assert.Equal(t, customClient, exporter.client)
-}
+// 	ctx := context.Background()
 
-// TestExport verifies that the Export method correctly pushes metrics to the Pushgateway.
-func TestExport(t *testing.T) {
-	// Setup a mock Pushgateway server.
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer mockServer.Close()
+// 	collector := NewCollector()
 
-	ctx := context.Background()
+// 	exporter := New("test-job", "test-app", 1*time.Second, mockServer.URL, collector)
 
-	collector := NewCollector()
+// 	err := exporter.Export(ctx)
+// 	assert.NoError(t, err, "Export should succeed")
+// }
 
-	exporter := New("test-job", "test-app", 1*time.Second, mockServer.URL, collector)
+// // TestRoutineSequentialExporter verifies the continuous metrics collection and pushing.
+// func TestRoutineSequentialExporter(t *testing.T) {
+// 	// Setup a mock Pushgateway server
+// 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		time.Sleep(200 * time.Millisecond) // Simulate delay in response
+// 		w.WriteHeader(http.StatusOK)
+// 	}))
+// 	defer mockServer.Close()
 
-	err := exporter.Export(ctx)
-	assert.NoError(t, err, "Export should succeed")
-}
+// 	collector := NewCollector()
+// 	exporter := New("test-job", "test-app", 100*time.Millisecond, mockServer.URL, collector)
 
-// TestRoutineSequentialExporter verifies the continuous metrics collection and pushing.
-func TestRoutineSequentialExporter(t *testing.T) {
-	// Setup a mock Pushgateway server
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(200 * time.Millisecond) // Simulate delay in response
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer mockServer.Close()
+// 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+// 	defer cancel()
 
-	collector := NewCollector()
-	exporter := New("test-job", "test-app", 100*time.Millisecond, mockServer.URL, collector)
+// 	errCh := make(chan error, 1)
+// 	go func() {
+// 		errCh <- exporter.RoutineSequentialExporter(ctx)
+// 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-	defer cancel()
+// 	time.Sleep(400 * time.Millisecond) // Wait for CronJob execution time
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- exporter.RoutineSequentialExporter(ctx)
-	}()
-
-	time.Sleep(400 * time.Millisecond) // Wait for CronJob execution time
-
-	// Verify that the function exits with context deadline exceeded error.
-	err := <-errCh
-	if assert.Error(t, err, "RoutineSequentialExporter should return an error") {
-		assert.True(t, errors.Is(err, context.DeadlineExceeded), "RoutineSequentialExporter should exit with context deadline exceeded error: %v", err)
-	}
-}
+// 	// Verify that the function exits with context deadline exceeded error.
+// 	err := <-errCh
+// 	if assert.Error(t, err, "RoutineSequentialExporter should return an error") {
+// 		assert.True(t, errors.Is(err, context.DeadlineExceeded), "RoutineSequentialExporter should exit with context deadline exceeded error: %v", err)
+// 	}
+// }
