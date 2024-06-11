@@ -1,0 +1,18 @@
+# Job を定義して任意のタイミングで実行させる
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pushmetric-test
+  namespace: ren510dev
+spec:
+  template:
+    spec:
+      containers:
+        - name: pushmetric-test
+          image: ren1007/pushmetric-test:v2.7
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Never
+  backoffLimit: 3
+  completionMode: NonIndexed
+  completions: 1
+  parallelism: 1

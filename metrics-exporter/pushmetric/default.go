@@ -42,11 +42,21 @@ var (
 	)
 )
 
+// WithDefaultMetrics adds default metrics ( cpu_utilization, memory_utilization, push_count ) to collectors.
+func (c *Collector) WithDefaultValue() *Collector {
+	c.RegisterAsyncMetrics(
+		CpuUtilizationMetric,    // CPU utilization
+		MemoryUtilizationMetric, // Memory utilization
+		PushCountMetric,         // Push count
+	)
+	return c
+}
+
 // updateCPUMetric updates CPU metrics.
 func updateCPUMetric(lvs ...string) error {
 	currentCPUUtilization, err := getCPUUtilization()
 	if err != nil {
-		return fmt.Errorf("error getting CPU usage: %w", err)
+		return fmt.Errorf("error updating cpu_utilization: %w", err)
 	}
 	CpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCPUUtilization)
 	return nil
@@ -56,20 +66,20 @@ func updateCPUMetric(lvs ...string) error {
 func updateMemoryMetric(lvs ...string) error {
 	currentMemoryUtilization, err := getMemoryUtilization()
 	if err != nil {
-		return fmt.Errorf("error getting memory usage: %w", err)
+		return fmt.Errorf("error updating memory_utilization: %w", err)
 	}
 	MemoryUtilizationMetric.WithLabelValues(lvs...).Set(currentMemoryUtilization)
 	return nil
 }
 
-// updatePushCountMetric updates push count metrics.
+// updatePushCountMetric increment push count metrics.
 func updatePushCountMetric(lvs ...string) error {
 	PushCountMetric.WithLabelValues(lvs...).Inc()
 	return nil
 }
 
-// GetInstanceName returns the hostname of the current instance.
-func GetInstanceName() string {
+// getInstanceName returns the hostname of the current instance.
+func getInstanceName() string {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return ""
@@ -81,7 +91,7 @@ func GetInstanceName() string {
 func getCPUUtilization() (float64, error) {
 	cpuUtilization, err := cpu.Percent(0, false)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get CPU utilization: %w", err)
+		return 0, fmt.Errorf("error getting CPU utilization: %w", err)
 	}
 	return cpuUtilization[0], nil
 }
@@ -90,7 +100,7 @@ func getCPUUtilization() (float64, error) {
 func getMemoryUtilization() (float64, error) {
 	memoryUtilization, err := mem.VirtualMemory()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get memory utilization: %w", err)
+		return 0, fmt.Errorf("error getting memory utilization: %w", err)
 	}
 	return memoryUtilization.UsedPercent, nil
 }

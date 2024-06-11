@@ -3,7 +3,6 @@ package pushmetric
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 )
 
-// Exporter はPushGateway にメトリクスを送信する際の情報を登録します。
+// The Exporter configures information for sending metrics to PushGateway.
 type Exporter struct {
 	jobName         string
 	applicationName string
@@ -33,39 +32,37 @@ func New(jobName, applicationName string, pushInterval time.Duration, endPoint s
 	}
 }
 
-// RoutineSequentialExporter continuously collects metrics and pushes them to the Pushgateway.
+// RoutineSequentialExporter continuously pushes metrics to the Pushgateway.
 func (e *Exporter) RoutineSequentialExporter(ctx context.Context) error {
 	ticker := time.NewTicker(e.pushInterval)
 	defer ticker.Stop()
 
 	// Set label values
 	applicationNameLabelValue := e.applicationName
-	instanceNameLabelValue := GetInstanceName()
+	instanceNameLabelValue := getInstanceName()
 
 	for range ticker.C {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			// CPU
+			// CPU utilization
 			if err := updateCPUMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
-				return fmt.Errorf(": %w", err)
+				return fmt.Errorf("failed to update CPU metric: %w", err)
 			}
 
-			// Memory
+			// Memory utilization
 			if err := updateMemoryMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
-				return fmt.Errorf(": %w", err)
+				return fmt.Errorf("failed to update Memory metric: %w", err)
 			}
 
-			// Push Count
+			// Push count
 			if err := updatePushCountMetric(applicationNameLabelValue, instanceNameLabelValue); err != nil {
-				return fmt.Errorf(": %w", err)
+				return fmt.Errorf("failed to update Push Count metric: %w", err)
 			}
-
-			fmt.Println("[DEBUG] 非同期メトリクスを更新しました")
 
 			if err := e.AsyncExport(ctx); err != nil {
-				return fmt.Errorf("hoge: %w", err)
+				return fmt.Errorf("failed to export metrics asynchronously: %w", err)
 			}
 		}
 	}
@@ -73,27 +70,23 @@ func (e *Exporter) RoutineSequentialExporter(ctx context.Context) error {
 	return nil
 }
 
-// 非同期的でメトリクスを出力する場合
+// AsyncExport passes asyncCollectors to export function to push custom metrics.
 func (e *Exporter) AsyncExport(ctx context.Context) error {
 	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.asynCollectors); err != nil {
-		return fmt.Errorf("hoge: %w", err)
-	} else {
-		log.Println("[DEBUG] 非同期メトリクスを出力しました。")
+		return fmt.Errorf("failed to export async collectors: %w", err)
 	}
 	return nil
 }
 
-// 任意のタイミングでメトリクスを出力する場合
+// SyncExport passes syncCollectors to export function to push custom metrics.
 func (e *Exporter) SyncExport(ctx context.Context) error {
 	if err := export(ctx, e.endPoint, e.jobName, e.client, e.collector.syncCollectors); err != nil {
-		return fmt.Errorf("hoge: %w", err)
-	} else {
-		log.Println("[DEBUG] 同期メトリクスを出力しました。")
+		return fmt.Errorf("failed to export sync collectors: %w", err)
 	}
 	return nil
 }
 
-// export exports the provided collectors to the specified endpoint with the given job name.
+// export exports the provided collector (asynCollectors or syncCollectors) to the specified endpoint.
 func export(ctx context.Context, ep string, name string, client *http.Client, collectors []prometheus.Collector) error {
 	pusher := push.New(ep, name)
 	if client != nil {
@@ -114,18 +107,16 @@ func (e *Exporter) WithClient(client *http.Client) *Exporter {
 }
 
 // Shutdown exports the final metrics and shuts down the exporter.
-func (e *Exporter) Shutdown(gracePeriod time.Duration) error {
+func (e *Exporter) Shutdown(ctx context.Context, gracePeriod time.Duration) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), gracePeriod)
 	defer shutdownCancel()
 
-	fmt.Println("Graceful Shutdown...")
-
 	if err := e.AsyncExport(shutdownCtx); err != nil {
-		return fmt.Errorf("hoge: %w", err)
+		return fmt.Errorf("failed to export async collectors during shutdown: %w", err)
 	}
 
 	if err := e.SyncExport(shutdownCtx); err != nil {
-		return fmt.Errorf("hoge: %w", err)
+		return fmt.Errorf("failed to export sync collectors during shutdown: %w", err)
 	}
 
 	return nil

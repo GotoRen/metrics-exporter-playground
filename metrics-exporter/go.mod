@@ -1,4 +1,4 @@
-module github.com/GotoRen/metrics-exporter-playground/metrics-exporter
+module test
 
 go 1.22.3
 
