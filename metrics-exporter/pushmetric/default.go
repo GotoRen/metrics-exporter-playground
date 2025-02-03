@@ -11,7 +11,7 @@ import (
 
 // Define CPU usage GaugeMetric.
 var (
-	CpuUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
+	CPUUtilizationMetric = prometheus.NewGaugeVec( //nolint:gochecknoglobals
 		prometheus.GaugeOpts{
 			Name: "cpu_utilization",
 			Help: "CPU usage of the application",
@@ -43,9 +43,9 @@ var (
 )
 
 // WithDefaultMetrics adds default metrics ( cpu_utilization, memory_utilization, push_count ) to collectors.
-func (c *Collector) WithDefaultValue() *Collector {
+func (c *Collector) WithDefaultMetrics() *Collector {
 	c.RegisterAsyncMetrics(
-		CpuUtilizationMetric,    // CPU utilization
+		CPUUtilizationMetric,    // CPU utilization
 		MemoryUtilizationMetric, // Memory utilization
 		PushCountMetric,         // Push count
 	)
@@ -58,7 +58,7 @@ func updateCPUMetric(lvs ...string) error {
 	if err != nil {
 		return fmt.Errorf("error updating cpu_utilization: %w", err)
 	}
-	CpuUtilizationMetric.WithLabelValues(lvs...).Set(currentCPUUtilization)
+	CPUUtilizationMetric.WithLabelValues(lvs...).Set(currentCPUUtilization)
 	return nil
 }
 

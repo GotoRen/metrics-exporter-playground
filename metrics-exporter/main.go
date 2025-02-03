@@ -67,7 +67,7 @@ func main() {
 	collector := pushmetric.NewCollector()
 
 	collector.RegisterAsyncMetrics(
-		pushmetric.CpuUtilizationMetric,    // CPU 使用率
+		pushmetric.CPUUtilizationMetric,    // CPU 使用率
 		pushmetric.MemoryUtilizationMetric, // メモリ使用率
 		pushmetric.PushCountMetric,         // Push 回数
 	)
@@ -98,6 +98,7 @@ func main() {
 				log.Fatalf("failed to gracefully shutdown: %v\n", err)
 			}
 			os.Exit(0)
+			cancel()
 		case <-ctx.Done():
 		}
 	}()
